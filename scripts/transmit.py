@@ -2,7 +2,7 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "hello world" # The message we are trying to send our phone :)
+MESSAGE = "3" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
