@@ -2,11 +2,11 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "Hello World :)" # The message we are trying to send our phone :)
+MESSAGE = "hello world" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
-HALF = 0.1
+HALF = 0.05
 
 payload = MESSAGE.encode()
 body = bytes([len(payload)]) + payload

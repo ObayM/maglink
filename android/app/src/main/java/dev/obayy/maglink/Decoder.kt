@@ -3,7 +3,7 @@ package dev.obayy.maglink
 import kotlin.math.abs
 
 object Decoder {
-    private const val HALF = 0.1
+    private const val HALF = 0.05
     private const val SKIP = HALF / 2
     private const val BIT = 2 * HALF
     private const val SYNC = "11100010010"

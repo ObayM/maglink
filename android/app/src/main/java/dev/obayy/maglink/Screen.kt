@@ -9,7 +9,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v5"
+const val VERSION = "v6"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
