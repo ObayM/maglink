@@ -4,7 +4,7 @@ import os, signal
 PHONE = "http://192.168.1.3:8080" # This is the url you get from phyphox
 CYCLES = 8
 
-MESSAGE = "337" # The message we are trying to send our phone :)
+MESSAGE = "hi" # The message we are trying to send our phone :)
 
 DELAY = 0.05
 WARMUP = 4
