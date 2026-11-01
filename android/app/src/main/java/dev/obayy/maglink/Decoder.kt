@@ -65,6 +65,8 @@ object Decoder {
         return value
     }
 
+    fun mix(r: Snapshot, i: Int) = r.x[i] + r.y[i] - r.z[i]
+
     fun listen (r: Snapshot): String? {
         if (r.t.size < 100){
             return null
@@ -74,7 +76,7 @@ object Decoder {
         prefix = DoubleArray(t.size + 1)
 
         for (i in t.indices) {
-            prefix[i + 1] = prefix[i] + r.x[i] - r.y[i] + r.z[i]
+            prefix[i + 1] = prefix[i] + mix(r, i)
         }
 
         val last = t.last()

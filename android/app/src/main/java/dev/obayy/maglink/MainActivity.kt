@@ -39,12 +39,14 @@ class MainActivity : Activity(), SensorEventListener {
             sensors.registerListener(this, mag, 0)
         }
         handler.post(tick)
+        handler.post(draw)
     }
 
     override fun onPause() {
         super.onPause()
         sensors.unregisterListener(this)
         handler.removeCallbacks(tick)
+        handler.removeCallbacks(draw)
     }
 
     override fun onSensorChanged(event: SensorEvent) {
@@ -57,7 +59,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private val tick = object : Runnable {
         override fun run() {
-            screen.showStatus("v3 $sensorName", count, readings.size)
+            screen.showStatus(sensorName, count)
             count = 0
 
             val snap = readings.snapshot()
@@ -68,4 +70,12 @@ class MainActivity : Activity(), SensorEventListener {
             handler.postDelayed(this, 1000)
         }
     }
+
+    private val draw = object : Runnable {
+        override fun run() {
+            screen.scope.show(readings.snapshot(), 5.0)
+            handler.postDelayed(this, 100)
+        }
+    }
+
 }

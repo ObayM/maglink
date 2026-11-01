@@ -4,10 +4,10 @@
     <!-- without this Android caps sensors at 200 readings/s -->
     <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
     <uses-permission android:name="android.permission.INTERNET" />
-    
+
     <application
         android:label="MagLink"
-        android:theme="@android:style/Theme.DeviceDefault.DayNight">
+        android:theme="@style/MagLink">
         <activity
             android:name=".MainActivity"
             android:exported="true">
