@@ -4,24 +4,31 @@ import android.content.Context
 import android.graphics.Typeface
 import android.util.TypedValue
 import android.view.Gravity
+import android.view.View
 import android.widget.LinearLayout
 import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v7"
+const val VERSION = "v8"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
     val root = LinearLayout(context)
     val scope = Scope(context, colors)
+
     private val title = TextView(context)
     private val state = TextView(context)
     private val message = TextView(context)
+    private val picture = Picture(context, colors)
+    
     private val time = TextView(context)
     private val history = TextView(context)
     private val status = TextView(context)
     private val earlier = mutableListOf<String>()
+    private var last = ""
+
+
 
     private fun dp(v: Int) = (v * context.resources.displayMetrics.density).toInt()
 
@@ -68,6 +75,11 @@ class Screen(private val context: Context) {
         root.addView(state)
         root.addView(scope, band)
         root.addView(message, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+
+        root.addView(picture, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
+        picture.visibility = View.GONE
+
+
         root.addView(time)
         root.addView(history, gap)
         root.addView(status)
@@ -77,13 +89,31 @@ class Screen(private val context: Context) {
         status.text = "$sensor, $perSecond readings a second. Build $VERSION."
     }
 
-    fun showMessage(text: String) {
-        if (message.text.isNotEmpty()) {
-            earlier.add(0, "${message.text}   ${time.text.removePrefix("Received at ")}")
+     private fun remember(label: String) {
+        if (last.isNotEmpty()) {
+            earlier.add(0, "$last   ${time.text.removePrefix("Received at ")}")
+            
             if (earlier.size > 4) earlier.removeAt(4)
+            
             history.text = earlier.joinToString("\n")
         }
-        message.text = text
+
+        last = label
         time.text = "Received at ${LocalTime.now().withNano(0)}"
+    }
+
+    fun showMessage(text: String) {
+        remember(text)
+        
+        message.text = text
+        message.visibility = View.VISIBLE
+        picture.visibility = View.GONE
+    }
+
+    fun showPicture(b: ByteArray) {
+        remember("A ${b[1]}×${b[2]} picture")
+        picture.show(b)
+        picture.visibility = View.VISIBLE
+        message.visibility = View.GONE
     }
 }

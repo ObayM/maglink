@@ -67,7 +67,7 @@ object Decoder {
 
     fun mix(r: Snapshot, i: Int) = r.x[i] + r.y[i] - r.z[i]
 
-    fun listen (r: Snapshot): String? {
+    fun listen (r: Snapshot): ByteArray? {
         if (r.t.size < 100){
             return null
         }
@@ -113,7 +113,7 @@ object Decoder {
             
             if (length > 0 && check == 255 - (length + got.sum()) % 256) {
                 doneUntil = end
-                return ByteArray(length) { got[it].toByte() }.decodeToString()
+                return ByteArray(length) { got[it].toByte() }
             }
             
             if (tried.size == 5) break

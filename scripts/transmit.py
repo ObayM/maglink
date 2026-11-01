@@ -8,7 +8,36 @@ WARMUP = 4
 SYNC = "11100010010"
 HALF = 0.05
 
-payload = MESSAGE.encode()
+ART = """
+................
+................
+...###....###...
+..#####..#####..
+.##############.
+.##############.
+.##############.
+..############..
+...##########...
+....########....
+.....######.....
+......####......
+.......##.......
+................
+................
+................
+"""
+
+def picture(art):
+    rows = art.strip().splitlines()
+    bits = "".join("1" if c == "#" else "0" for row in rows for c in row)
+
+    bits += "0" * (-len(bits) % 8)
+    pixels = bytes(int(bits[i:i + 8], 2) for i in range(0, len(bits), 8))
+    
+    return bytes([1, len(rows[0]), len(rows)]) + pixels
+
+
+payload =  picture(ART) # MESSAGE.encode() for messages
 body = bytes([len(payload)]) + payload
 check = 255 - sum(body) % 256 # flipped so a silent stretch (all zeros) can't pass
 
