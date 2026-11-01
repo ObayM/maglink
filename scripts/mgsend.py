@@ -1,15 +1,15 @@
 import json, subprocess, time, urllib.request
-
+import os, signal
 
 PHONE = "http://192.168.1.3:8080" # This is the url you get from phyphox
 CYCLES = 8
 
-MESSAGE = "hello world" # The message we are trying to send our phone :)
+MESSAGE = "337" # The message we are trying to send our phone :)
 
 DELAY = 0.05
 WARMUP = 4
 
-HALF = 0.1
+HALF = 0.08
 SKIP = HALF / 2
 
 def phone (path):
@@ -43,12 +43,12 @@ def wait_until(moment):
     while time.time() - time_0 < moment:
         time.sleep(0.001)
 
-def stop(procs):
+def busy(on):
     for p in procs:
-        p.kill()
-    
-    for p in procs:
-        p.wait()
+        os.kill(p.pid, signal.SIGCONT if on else signal.SIGSTOP)
+
+procs = [subprocess.Popen(["yes"], stdout=subprocess.DEVNULL) for _ in range(8)]
+busy(False)
 
 phone("/control?cmd=stop")
 phone("/control?cmd=clear")
@@ -57,23 +57,21 @@ time_0 = time.time()
 
 
 msg_start = 2.0
-procs = []
 
 for i, want_busy in enumerate(halves):
     wait_until(msg_start + i * HALF)
-
-    if want_busy and not procs:
-        procs = [subprocess.Popen(["yes"], stdout=subprocess.DEVNULL) for _ in range(8)]
-    if not want_busy and procs:
-        stop(procs)
-        procs = []
+    busy(want_busy)
 
 wait_until(msg_start + len(halves) * HALF)
 
-stop(procs)
+busy(False)
 time.sleep(1)
 
 phone("/control?cmd=stop")
+
+for p in procs:
+    p.kill()
+    p.wait()
 
 data = phone("/get?mag_time=full&magX=full&magY=full&magZ=full")["buffer"]
 t = data["mag_time"]["buffer"]
