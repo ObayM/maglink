@@ -55,7 +55,7 @@ for axis in ["magX", "magY", "magZ"]:
     
     print(axis, "average", round(sum(diffs) / len(diffs), 3), "per cycle", [round(d, 2) for d in diffs])
 
-with open("test.json", "w") as f:
+with open(f"test{time.strftime("%H-%M-%S")}.json", "w") as f:
     json.dump({
         "t": t,
         "magX": data["magX"]["buffer"],
