@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v8"
+const val VERSION = "v9"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -27,6 +27,8 @@ class Screen(private val context: Context) {
     private val status = TextView(context)
     private val earlier = mutableListOf<String>()
     private var last = ""
+    private var receiving = false
+    private val listening = "Listening to the laptop's magnetic field."
 
 
 
@@ -48,7 +50,7 @@ class Screen(private val context: Context) {
         title.text = "MagLink"
 
         style(state, 17f, colors.muted)
-        state.text = "Listening to the laptop's magnetic field."
+        state.text = listening
 
         style(message, 72f, colors.ink)
         message.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
@@ -104,6 +106,8 @@ class Screen(private val context: Context) {
 
     fun showMessage(text: String) {
         remember(text)
+        receiving = false
+        state.text = listening
         
         message.text = text
         message.visibility = View.VISIBLE
@@ -112,8 +116,25 @@ class Screen(private val context: Context) {
 
     fun showPicture(b: ByteArray) {
         remember("A ${b[1]}×${b[2]} picture")
+        receiving = false
+        state.text = listening
         picture.show(b)
         picture.visibility = View.VISIBLE
         message.visibility = View.GONE
+    }
+
+    fun showPartial(b: ByteArray) {
+        receiving = true
+        state.text = "Receiving a ${b[1]}×${b[2]} picture..."
+        
+        picture.show(b)
+        picture.visibility = View.VISIBLE
+        message.visibility = View.GONE
+    }
+
+    fun idle() {
+        if (!receiving) return
+        receiving = false
+        state.text = "That picture got scrambled. Try again?"
     }
 }

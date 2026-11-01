@@ -2,6 +2,8 @@ package dev.obayy.maglink
 
 import kotlin.math.abs
 
+class Frame(val bytes: ByteArray, val complete: Boolean)
+
 object Decoder {
     private const val HALF = 0.05
     private const val SKIP = HALF / 2
@@ -67,7 +69,7 @@ object Decoder {
 
     fun mix(r: Snapshot, i: Int) = r.x[i] + r.y[i] - r.z[i]
 
-    fun listen (r: Snapshot): ByteArray? {
+    fun listen(r: Snapshot): Frame? {
         if (r.t.size < 100){
             return null
         }
@@ -94,6 +96,7 @@ object Decoder {
         candidates.sortByDescending { it.first }
 
         val tried = mutableListOf<Double>()
+        var partial: ByteArray? = null
 
         for ((_, s) in candidates) {
             if (tried.any { abs(s - it) < HALF }) continue
@@ -103,21 +106,32 @@ object Decoder {
             
             val end = dataStart + (length + 2) * 8 * BIT
             
-            if (end > last) continue
+            if (end > last) {
+                val have = ((last - dataStart) / (8 * BIT)).toInt() - 1
+                if (partial == null && have >= 3) {
+                    val head = ByteArray(3) { readByte(dataStart, 1 + it).toByte() }
+                    
+                    if (pictureBytes(head) == length) {
+                        partial = ByteArray(minOf(have, length)) { readByte(dataStart, 1 + it).toByte() }
+                    }
+                }
+                continue
+            }
             
             tried.add(s)
 
             val got = IntArray(length) { readByte(dataStart, 1 + it) }
             
-            val check = readByte(dataStart, 1 + length)
+            val check = readByte(dataStart, 1 + lcength)
             
             if (length > 0 && check == 255 - (length + got.sum()) % 256) {
                 doneUntil = end
-                return ByteArray(length) { got[it].toByte() }
+                return Frame(ByteArray(length) { got[it].toByte() }, true)
             }
             
             if (tried.size == 5) break
         }
+        if (partial != null) return Frame(partial, false)
         return null
     }
 }

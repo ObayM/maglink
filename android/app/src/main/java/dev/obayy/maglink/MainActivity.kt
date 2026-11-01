@@ -69,14 +69,21 @@ class MainActivity : Activity(), SensorEventListener {
             val snap = readings.snapshot()
             Share.latest = snap
             
-            val bytes = Decoder.listen(snap)
-            if (bytes != null) {
-                if (isPicture(bytes)) {
-                    screen.showPicture(bytes)
-                } else {
-                    val text = bytes.decodeToString()
-                    screen.showMessage(commands.run(text) ?: text)
-                }
+            val frame = Decoder.listen(snap)
+
+            if (frame == null) {
+                screen.idle()
+                
+            } else if (!frame.complete) {
+                screen.showPartial(frame.bytes)
+
+            } else if (isPicture(frame.bytes)) {
+                screen.showPicture(frame.bytes)
+
+            } else {
+                val text = frame.bytes.decodeToString()
+
+                screen.showMessage(commands.run(text) ?: text)
             }
 
             handler.postDelayed(this, 1000)
