@@ -4,9 +4,12 @@ import json, subprocess, time, urllib.request
 PHONE = "http://192.168.1.3:8080" # This is the url you get from phyphox
 CYCLES = 8
 
-MESSAGE = "hi" # The message we are trying to send our phone :)
+MESSAGE = "hello world" # The message we are trying to send our phone :)
 
-HALF = 0.5
+DELAY = 0.05
+WARMUP = 4
+
+HALF = 0.1
 SKIP = HALF / 2
 
 def phone (path):
@@ -34,6 +37,7 @@ for bit in bits:
     else:
         halves += [False, True]
 
+halves = [True, False] * WARMUP + halves
 
 def wait_until(moment):
     while time.time() - time_0 < moment:
@@ -88,19 +92,25 @@ with open(f"send{time.strftime('%H-%M-%S')}.json", "w") as f:
         "bits": bits,
         "half": HALF,
         "msg_start": msg_start,
+        "delay": DELAY,
+        "warmup": WARMUP,
     }, f)
 
 s = [a - b + c for a, b, c in zip(x, y, z)]
 
+margins = []
+
 received = ""
 
 for i in range(len(bits)):
-    start = msg_start + i * 2 * HALF
+    start = msg_start + DELAY + WARMUP * 2 * HALF + i * 2 * HALF
     
     first = get_avg(t, s, start + SKIP, start + HALF)
     second = get_avg(t, s, start + HALF + SKIP, start + 2 * HALF)
     
     received += "1" if first > second else "0"
+
+    margins.append(abs(first - second))
     print(i, round(first - second, 2))
 
 
@@ -109,3 +119,5 @@ text = bytes(int(received[i:i +8], 2) for i in range(0, len(received), 8))
 print("sent:", bits)
 print("got: ", received)
 print("text:", text.decode(errors="replace"))
+
+print("weakest margin:", round(min(margins), 2))
