@@ -14,6 +14,8 @@ import android.view.WindowManager
 class MainActivity : Activity(), SensorEventListener {
     private lateinit var sensors: SensorManager
     private lateinit var screen: Screen
+    private lateinit var commands: Commands
+
     private val readings = Readings(seconds = 60.0)
     private val handler = Handler(Looper.getMainLooper())
     private var count = 0
@@ -23,6 +25,8 @@ class MainActivity : Activity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         screen = Screen(this)
+
+        commands = Commands(this)
         setContentView(screen.root)
         sensors = getSystemService(SENSOR_SERVICE) as SensorManager
 
@@ -66,7 +70,7 @@ class MainActivity : Activity(), SensorEventListener {
             Share.latest = snap
             val message = Decoder.listen(snap)
 
-            if (message != null) screen.showMessage(message)
+            if (message != null) screen.showMessage(commands.run(message) ?: message)
             handler.postDelayed(this, 1000)
         }
     }
