@@ -25,13 +25,15 @@ class MainActivity : Activity(), SensorEventListener {
         screen = Screen(this)
         setContentView(screen.root)
         sensors = getSystemService(SENSOR_SERVICE) as SensorManager
+
+        Share.start()
     }
 
     override fun onResume() {
         super.onResume()
 
-        val mag = sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED)
-            ?: sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+
+        val mag = sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
         if (mag != null) {
             sensorName = mag.name
             sensors.registerListener(this, mag, 0)
@@ -55,10 +57,13 @@ class MainActivity : Activity(), SensorEventListener {
 
     private val tick = object : Runnable {
         override fun run() {
-            screen.showStatus(sensorName, count, readings.size)
+            screen.showStatus("v3 $sensorName", count, readings.size)
             count = 0
-            
-            val message = Decoder.listen(readings.snapshot())
+
+            val snap = readings.snapshot()
+            Share.latest = snap
+            val message = Decoder.listen(snap)
+
             if (message != null) screen.showMessage(message)
             handler.postDelayed(this, 1000)
         }
