@@ -50,9 +50,8 @@ object Meter {
     }
 
     fun advice(step: Double) = when {
-        step >= 12 -> "fast should work :)"
-        step >= 4 -> "use normal"
-        step >= 2 -> "use slow"
+        step >= 26 -> "fast should work :)"
+        step >= 14 -> "use normal"
         else -> "too weak, move the phone"
     }
 }
