@@ -9,7 +9,7 @@ SYNC = "11100010010"
 
 MODE = "fast" # normal, fast or turbo
 
-REPEAT = True
+REPEAT = False
 GAP = 0.5
 WAKE = 3.0
 

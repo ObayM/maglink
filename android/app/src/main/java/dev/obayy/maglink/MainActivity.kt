@@ -9,6 +9,8 @@ import android.hardware.SensorManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.WindowManager
 import kotlin.math.abs
 
@@ -72,7 +74,10 @@ class MainActivity : Activity(), SensorEventListener {
                 gravity[i] += 0.1f * (event.values[i] - gravity[i])
             }
             
-            if (shake > 2f) moved = true
+            if (shake > 2f) {
+                moved = true
+                Laptop.reset()
+            }
             return
         }
 
@@ -90,10 +95,19 @@ class MainActivity : Activity(), SensorEventListener {
 
             val snap = readings.snapshot()
             Share.latest = snap
-            screen.showSignal(Meter.measure(snap))
+            val step = Meter.measure(snap)
+            screen.showSignal(step)
 
             val frame = Decoder.listen(snap)
             if (frame != null) screen.mode = frame.mode
+
+            if (frame != null || step != null) {
+                screen.showDoing(null)
+            } else {
+                val doing = Laptop.guess(snap)
+                screen.showDoing(doing?.label)
+                if (doing?.finished == true) laptopDone()
+            }
 
             if (frame == null) {
                 screen.idle()
@@ -118,6 +132,14 @@ class MainActivity : Activity(), SensorEventListener {
 
             handler.postDelayed(this, every)
         }
+    }
+
+    private fun laptopDone() {
+        val vibrator = getSystemService(Vibrator::class.java)
+        vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 200, 150, 200), -1))
+
+        screen.mode = ""
+        screen.showMessage("Laptop's done")
     }
 
     private fun repeat(f: Frame): Boolean {

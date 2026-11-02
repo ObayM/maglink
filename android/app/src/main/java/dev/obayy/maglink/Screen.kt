@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v15"
+const val VERSION = "v16"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -20,6 +20,7 @@ class Screen(private val context: Context) {
     private val title = TextView(context)
     private val state = TextView(context)
     private val signal = TextView(context)
+    private val doing = TextView(context)
     private val message = TextView(context)
     private val picture = Picture(context, colors)
     
@@ -57,6 +58,9 @@ class Screen(private val context: Context) {
         style(signal, 15f, colors.muted)
         signal.visibility = View.GONE
 
+        style(doing, 15f, colors.muted)
+        doing.visibility = View.GONE
+
         style(message, 72f, colors.ink)
         message.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         message.gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -85,6 +89,7 @@ class Screen(private val context: Context) {
         val under = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
         under.topMargin = dp(12)
         root.addView(signal, under)
+        root.addView(doing, LayoutParams(under))
 
         root.addView(message, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
@@ -111,6 +116,11 @@ class Screen(private val context: Context) {
         signal.visibility = View.VISIBLE
     }
 
+    fun showDoing(label: String?) {
+        doing.visibility = if (label == null) View.GONE else View.VISIBLE
+        if (label != null) doing.text = "Laptop is $label"
+    }
+
      private fun remember(label: String) {
         if (last.isNotEmpty()) {
             earlier.add(0, "$last   ${time.text.removePrefix("Received at ")}")
@@ -121,7 +131,7 @@ class Screen(private val context: Context) {
         }
 
         last = label
-        time.text = "Received at ${LocalTime.now().withNano(0)} in $mode mode"
+        time.text = "Received at ${LocalTime.now().withNano(0)}" + if (mode.isEmpty()) "" else " in $mode mode"
     }
 
     fun showMessage(text: String) {
