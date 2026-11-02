@@ -2,7 +2,7 @@ import json
 import matplotlib.pyplot as plt
 
 
-data = json.load(open('test.json'))
+data = json.load(open('data/test.json'))
 
 t = data["t"]
 
@@ -33,5 +33,5 @@ for row, axis in zip(rows, ["magX","magY", "magZ"]):
     row.set_ylabel(axis + '(uT)')
 
 rows[-1].set_xlabel("time (s)")
-plt.savefig('test.png', dpi=120)
+plt.savefig('data/test.png', dpi=120)
 plt.show()
