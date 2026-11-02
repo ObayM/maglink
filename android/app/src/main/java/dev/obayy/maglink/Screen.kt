@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v11"
+const val VERSION = "v12"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -19,6 +19,7 @@ class Screen(private val context: Context) {
 
     private val title = TextView(context)
     private val state = TextView(context)
+    private val signal = TextView(context)
     private val message = TextView(context)
     private val picture = Picture(context, colors)
     
@@ -53,6 +54,9 @@ class Screen(private val context: Context) {
         style(state, 17f, colors.muted)
         state.text = listening
 
+        style(signal, 15f, colors.muted)
+        signal.visibility = View.GONE
+
         style(message, 72f, colors.ink)
         message.typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         message.gravity = Gravity.START or Gravity.CENTER_VERTICAL
@@ -77,6 +81,11 @@ class Screen(private val context: Context) {
         root.addView(title)
         root.addView(state)
         root.addView(scope, band)
+
+        val under = LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT)
+        under.topMargin = dp(12)
+        root.addView(signal, under)
+
         root.addView(message, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
 
         root.addView(picture, LayoutParams(LayoutParams.MATCH_PARENT, 0, 1f))
@@ -90,6 +99,16 @@ class Screen(private val context: Context) {
 
     fun showStatus(sensor: String, perSecond: Int) {
         status.text = "$sensor, $perSecond readings a second. Build $VERSION."
+    }
+
+    fun showSignal(step: Double?) {
+        if (step == null) {
+            signal.visibility = View.GONE
+            return
+        }
+        
+        signal.text = "Signal ${"%.1f".format(step)} µT, ${Meter.advice(step)}"
+        signal.visibility = View.VISIBLE
     }
 
      private fun remember(label: String) {

@@ -68,7 +68,8 @@ class MainActivity : Activity(), SensorEventListener {
 
             val snap = readings.snapshot()
             Share.latest = snap
-            
+            screen.showSignal(Meter.measure(snap))
+
             val frame = Decoder.listen(snap)
             if (frame != null) screen.mode = frame.mode
 
