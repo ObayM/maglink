@@ -8,7 +8,7 @@ WARMUP = 4
 SYNC = "11100010010"
 HALF = 0.05
 
-ART = """
+HEART = """
 ................
 ................
 ...###....###...
@@ -27,6 +27,25 @@ ART = """
 ................
 """
 
+CAT = """
+................
+..#..........#..
+..##........##..
+..###......###..
+..############..
+.##############.
+.###..####..###.
+.###..####..###.
+.##############.
+.######..######.
+.#####.##.#####.
+..############..
+...##########...
+.....######.....
+................
+................
+"""
+
 def picture(art):
     rows = art.strip().splitlines()
     bits = "".join("1" if c == "#" else "0" for row in rows for c in row)
@@ -37,7 +56,7 @@ def picture(art):
     return bytes([1, len(rows[0]), len(rows)]) + pixels
 
 
-payload =  picture(ART) # MESSAGE.encode() for messages
+payload =  picture(CAT) # MESSAGE.encode() for messages
 body = bytes([len(payload)]) + payload
 check = 255 - sum(body) % 256 # flipped so a silent stretch (all zeros) can't pass
 
