@@ -21,10 +21,18 @@ object Meter {
     }
 
     fun measure(r: Snapshot): Double? {
-        if (r.t.isEmpty() || r.t.last() - r.t.first() < WINDOW) return null
+        if (r.t.isEmpty() || r.t.last() - r.t.first() < 2 * WINDOW) return null
 
-        val from = r.t.indexOfFirst { it >= r.t.last() - WINDOW }
-        val n = r.t.size - from
+        val now = r.t.last()
+        val start = r.t.indexOfFirst { it >= now - 2 * WINDOW }
+        val mid = r.t.indexOfFirst { it >= now - WINDOW }
+
+        beat(r, start, mid) ?: return null
+        return beat(r, mid, r.t.size)
+    }
+
+    private fun beat(r: Snapshot, from: Int, to: Int): Double? {
+        val n = to - from
 
         val t = DoubleArray(n) { r.t[from + it] - r.t[from] }
         val v = DoubleArray(n) { Decoder.mix(r, from + it) }

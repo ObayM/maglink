@@ -8,18 +8,27 @@ Basically the way this works is when the CPU jumps from idle to 100% (or near to
 
 Using the fact that the phone's compass sensor can feel these "jumps", the laptop can send bits by freezing/unfreezing 8 copies of `yes` (busy then idle is a 1, idle then busy is a 0).
 
-There is an Android app that reads the magnetometer as fast as it can (about 122 readings a second on a Galaxy A16) and keeps the last 60 seconds. Once a second it slides along that buffer looking for a spot where all 11 sync bits match, then reads the length, the bytes and the checksum. A message only shows up if the checksum passes :)
+There is an Android app that reads the magnetometer as fast as it can (about 125 readings a second on a Galaxy A16) and keeps the last 60 seconds. Twice a second it slides along that buffer looking for a spot where all 11 sync bits match, then reads the length, the bytes and the checksum. A message only shows up if the checksum passes :)
+If it doesn't, the app flips the bits it was least surea bout (1 or 2 at a time) and checks again which saves a lot of "almost-right" messages.
+
+## What it can do
+
+**Text**: You can send any text and it will be streamed
+**16x16 Pictures**: Send pictures (welll, small ones for now)
+**Commands**: send `!flash`, `!buzz` or `!open https://...` and the phone toggles the flashlight, vibrates or opens the link.
+Finally, tracking when your laptop is idle/on high load or any laptop actually
+
 
 ## Results
 
-| speed | half-bit | result |
-| --- | --- | --- |
-| 5 bits/s | 0.1 s | works |
-| 10 bits/s | 0.05 s | works (live version) |
-| 12.5 bits/s | 0.04 s | fails |
-| 16.7 bits/s | 0.03 s | fails |
+| mode | coding | speed | worked (at a good spot) |
+| --- | --- | --- | --- |
+| normal | Manchester, 50 ms halves | 10 bits/s | 4/4 |
+| fast | 4b5b + NRZI, 40 ms pieces | 20 bits/s | 3/6 |
+| turbo | 4b5b + NRZI, 16 ms pieces | 50 bits/s | 2/8 (experimental) |
 
-MAGNETO (Guri et al., 2018) reported up to 5 bits/s from a computer to a phone over a short distance. Anyway my phone needs to be very close to the laptop, so it's not the same setup, but it's the closest comparison I know of.
+
+MAGNETO (Guri et al., 2018) reported up to 5 bits/s from a computer to a phone, at up to 12.5 cm. But here the phone needs to be right on the laptop, so it's not the same setup, but it's the closest comparison I know of.
 
 ## Try it
 
@@ -31,12 +40,11 @@ cd android
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
-
-2. Find a good spot to put the phone in, set `HALF = 0.5` in `scripts/pattern.py`, you can run it and slide the phone around the laptop while watching the wave in the app, when it turns into a clean square wave, that's the right place!
+2. Find a good spot: run `python3 scripts/beacon.py` and slide the phone around the laptop. When the app shows "Signal ... µT", that's the strength there. 26+ means fast should work, 14+ means use normal, lower means keep looking.
 
 3. Fix the axis mix, `Decoder.mix()` combines the three axes as `x + y - z` which is right for me but it could be different for you :(
 
-4. You can send by running `python3 scripts/transmit.py`. Make sure `HALF` in the script matches the one in `Decoder.kt`.
+4. Set `MESSAGE` and `MODE` in `scripts/transmit.py` and run `python3 scripts/transmit.py`. For a picture, use `payload = picture(CAT)` instead of the message.
 
 The app also serves its raw readings on your local network, which makes debugging much easier:
 
