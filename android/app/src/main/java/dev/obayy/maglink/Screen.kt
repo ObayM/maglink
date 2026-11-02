@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v9"
+const val VERSION = "v10"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -126,7 +126,7 @@ class Screen(private val context: Context) {
     fun showPartial(b: ByteArray) {
         receiving = true
         state.text = "Receiving a ${b[1]}×${b[2]} picture..."
-        
+
         picture.show(b)
         picture.visibility = View.VISIBLE
         message.visibility = View.GONE

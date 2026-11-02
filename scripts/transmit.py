@@ -2,11 +2,14 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "!flash" # The message we are trying to send our phone :)
+MESSAGE = "hello" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
-HALF = 0.05
+HALF = 0.04
+
+CODES = ["11110", "01001", "10100", "10101", "01010", "01011", "01110", "01111",
+         "10010", "10011", "10110", "10111", "11010", "11011", "11100", "11101"]
 
 HEART = """
 ................
@@ -56,22 +59,27 @@ def picture(art):
     return bytes([1, len(rows[0]), len(rows)]) + pixels
 
 
-payload =  picture(CAT) # MESSAGE.encode() for messages
+payload =  picture(CAT)  #MESSAGE.encode()
+
 body = bytes([len(payload)]) + payload
 check = 255 - sum(body) % 256 # flipped so a silent stretch (all zeros) can't pass
 
-frame = SYNC + "".join(format(b, "08b") for b in body + bytes([check]))
-
-print(frame)
+code = "".join(CODES[b >> 4] + CODES[b & 15] for b in body + bytes([check]))
 
 halves = [True, False] * WARMUP
 
-for bit in frame:
+for bit in SYNC:
     if bit == "1":
         halves += [True, False]
     else:
         halves += [False, True]
 
+level = halves[-1]
+
+for bit in code:
+    if bit == "1":
+        level = not level
+    halves.append(level)
 
 def wait_until(moment):
     while time.time() - time_0 < moment:
