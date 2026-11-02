@@ -21,6 +21,7 @@ class MainActivity : Activity(), SensorEventListener {
     private val handler = Handler(Looper.getMainLooper())
     private var count = 0
     private var sensorName = "none"
+    private val every = 500L
 
     private var shown: ByteArray? = null
     private var moved = true
@@ -84,7 +85,7 @@ class MainActivity : Activity(), SensorEventListener {
 
     private val tick = object : Runnable {
         override fun run() {
-            screen.showStatus(sensorName, count)
+            screen.showStatus(sensorName, (count * 1000 / every).toInt())
             count = 0
 
             val snap = readings.snapshot()
@@ -101,7 +102,7 @@ class MainActivity : Activity(), SensorEventListener {
                 // REPEAT sends the same thing every round, only show it again after the phone was picked up
 
             } else if (!frame.complete) {
-                screen.showPartial(frame.bytes, frame.total)
+                screen.showPartial(frame.bytes, frame.total, frame.progress)
 
             } else {
                 shown = frame.bytes
@@ -115,7 +116,7 @@ class MainActivity : Activity(), SensorEventListener {
                 }
             }
 
-            handler.postDelayed(this, 1000)
+            handler.postDelayed(this, every)
         }
     }
 

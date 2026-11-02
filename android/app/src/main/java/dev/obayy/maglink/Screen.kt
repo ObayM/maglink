@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v14"
+const val VERSION = "v15"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -146,9 +146,9 @@ class Screen(private val context: Context) {
         message.visibility = View.GONE
     }
 
-    fun showPartial(b: ByteArray, total: Int) {
+    fun showPartial(b: ByteArray, total: Int, progress: Float) {
         receiving = true
-        scope.progress = b.size.toFloat() / total
+        scope.progress = progress
 
         if (pictureBytes(b) == total) {
             state.text = "Receiving a ${b[1]}×${b[2]} picture in $mode mode..."
@@ -158,7 +158,7 @@ class Screen(private val context: Context) {
         } else {
             
             state.text = "Reading in $mode mode..."
-            message.text = b.decodeToString()
+            message.text = if (b.isEmpty() || b.any { it < 32 || it > 126 }) "..." else b.decodeToString()
             message.setTextColor(colors.muted)
             message.visibility = View.VISIBLE
             picture.visibility = View.GONE

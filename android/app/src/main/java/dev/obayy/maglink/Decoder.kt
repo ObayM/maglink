@@ -3,7 +3,7 @@ package dev.obayy.maglink
 import kotlin.math.abs
 
 
-class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String, val total: Int)
+class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String, val total: Int, val progress: Float = 1f, val amp: Double = 0.0)
 
 class Mode(val name: String, val half: Double, val nrzi: Boolean)
 
@@ -86,12 +86,12 @@ object Decoder {
 
     // python is 100% better than kotlin :sob:
 
-    private fun syncScore(start: Double): Pair<Int, Double> {
+    private fun syncScore(margins: DoubleArray, i: Int, apart: Int): Pair<Int, Double> {
         var agree = 0
         var strength = 0.0
-        
+
         for (k in SYNC.indices) {
-            var m = margin(start + k * BIT)
+            var m = margins[i + k * apart]
             if (SYNC[k] == '0') m = -m
             
             strength += m
@@ -195,27 +195,31 @@ object Decoder {
             val frame = search(last) ?: continue
             if (frame.complete) return frame
 
-            if (partial == null) partial = frame
+            if (partial == null || frame.amp > partial.amp) partial = frame
         }
         return partial
     }
 
     private fun search(last: Double): Frame? {
         val candidates = mutableListOf<Pair<Double, Double>>()
-        var start = maxOf(t.first(), doneUntil)
+        val first = maxOf(t.first(), doneUntil)
+        val n = ((last - SYNC.length * BIT - first) / STEP).toInt()
+        if (n <= 0) return null
 
-        while (start < last - SYNC.length * BIT) {
-            val (agree, strength) = syncScore(start)
-            
-            if (agree == SYNC.length) candidates.add(Pair(strength, start))
-            start += STEP
+        // BIT is a whole number of STEPs, so each margin only has to be worked out once
+        val apart = Math.round(BIT / STEP).toInt()
+        val margins = DoubleArray(n + SYNC.length * apart) { margin(first + it * STEP) }
+
+        for (i in 0 until n) {
+            val (agree, strength) = syncScore(margins, i, apart)
+
+            if (agree == SYNC.length) candidates.add(Pair(strength, first + i * STEP))
         }
 
         candidates.sortByDescending { it.first }
 
         val tried = mutableListOf<Double>()
-        var partial: ByteArray? = null
-        var partialTotal = 0
+        var partial: Frame? = null
 
         for ((strength, s) in candidates) {
             val dataStart = s + SYNC.length * BIT
@@ -228,14 +232,17 @@ object Decoder {
             val end = dataStart + (length + 3) * BYTE
 
             if (end > last) {
+                if (end - s > 60) continue
+
                 val have = minOf(((last - dataStart) / BYTE).toInt() - 1, length)
-                if (partial == null && amp >= MIN_AMP && have >= 2) {
+                if (partial == null && amp >= MIN_AMP && have >= 0) {
+                    
                     val read = readBytes(dataStart, 1, have)
                     val head = ByteArray(have) { read[it].toByte() }
 
-                    if (pictureBytes(head) == length || read.all { it in 32..126 }) {
-                        partial = head
-                        partialTotal = length
+                    val picture = have > 0 && read[0] == 1 && (have < 3 || pictureBytes(head) == length)
+                    if (picture || read.all { it in 32..126 }) {
+                        partial = Frame(head, false, mode.name, length, ((last - s) / (end - s)).toFloat(), amp)
                     }
                 }
                 continue
@@ -247,12 +254,12 @@ object Decoder {
 
             if (body != null) {
                 doneUntil = end
+                
                 return Frame(body, true, mode.name, length)
             }
 
             if (tried.size == 15) break
         }
-        if (partial != null) return Frame(partial, false, mode.name, partialTotal)
-        return null
+        return partial
     }
 }

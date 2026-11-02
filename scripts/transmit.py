@@ -2,17 +2,16 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "hi" # The message we are trying to send our phone :)
+MESSAGE = "hello world" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
 
-MODE = "normal" # normal, fast or turbo
+MODE = "fast" # normal, fast or turbo
 
 REPEAT = True
 GAP = 0.5
 WAKE = 3.0
-
 
 
 HALF, NRZI = {"slow": (0.1, False), "normal": (0.05, False), "fast": (0.04, True), "turbo": (0.016, True)}[MODE]
