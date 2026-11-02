@@ -2,18 +2,20 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "hello world, veryyy lonnggg text i think?" # The message we are trying to send our phone :)
+MESSAGE = "hi" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
 
-MODE = "fast" # slow, normal or fast
+MODE = "normal" # normal, fast or turbo
 
-REPEAT = False
+REPEAT = True
 GAP = 0.5
 WAKE = 3.0
 
-HALF, NRZI = {"slow": (0.1, False), "normal": (0.05, False), "fast": (0.04, True)}[MODE]
+
+
+HALF, NRZI = {"slow": (0.1, False), "normal": (0.05, False), "fast": (0.04, True), "turbo": (0.016, True)}[MODE]
 
 CODES = ["11110", "01001", "10100", "10101", "01010", "01011", "01110", "01111",
          "10010", "10011", "10110", "10111", "11010", "11011", "11100", "11101"]
@@ -66,10 +68,26 @@ def picture(art):
     return bytes([1, len(rows[0]), len(rows)]) + pixels
 
 
-payload =  MESSAGE.encode() #picture(CAT)  
+def crc16(data):
+    crc = 0xFFFF
+
+    for b in data:
+        crc ^= b << 8
+        
+        for _ in range(8):
+            if crc & 0x8000:
+                crc = (crc << 1) ^ 0x1021
+            else:
+                crc = crc << 1
+            crc &= 0xFFFF
+    return crc
+
+
+payload =  MESSAGE.encode() #picture(CAT)
 
 body = bytes([len(payload)]) + payload
-check = 255 - sum(body) % 256 # flipped so a silent stretch (all zeros) can't pass
+crc = crc16(body)
+check = bytes([crc >> 8, crc & 0xFF])
 
 
 halves = [True, False] * WARMUP
@@ -83,7 +101,7 @@ for bit in SYNC:
 level = halves[-1]
 
 if NRZI:
-    code = "".join(CODES[b >> 4] + CODES[b & 15] for b in body + bytes([check]))
+    code = "".join(CODES[b >> 4] + CODES[b & 15] for b in body + check)
     level = halves[-1]
     
     for bit in code:
@@ -92,7 +110,7 @@ if NRZI:
         
         halves.append(level)
 else:
-    for b in body + bytes([check]):
+    for b in body + check:
        
         for bit in format(b, "08b"):
             if bit == "1":
