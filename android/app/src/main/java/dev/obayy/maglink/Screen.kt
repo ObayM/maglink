@@ -127,9 +127,11 @@ class Screen(private val context: Context) {
     fun showMessage(text: String) {
         remember(text)
         receiving = false
+        scope.progress = 0f
         state.text = listening
-        
+
         message.text = text
+        message.setTextColor(colors.ink)
         message.visibility = View.VISIBLE
         picture.visibility = View.GONE
     }
@@ -137,24 +139,36 @@ class Screen(private val context: Context) {
     fun showPicture(b: ByteArray) {
         remember("A ${b[1]}×${b[2]} picture")
         receiving = false
+        scope.progress = 0f
         state.text = listening
         picture.show(b)
         picture.visibility = View.VISIBLE
         message.visibility = View.GONE
     }
 
-    fun showPartial(b: ByteArray) {
+    fun showPartial(b: ByteArray, total: Int) {
         receiving = true
-        state.text = "Receiving a ${b[1]}×${b[2]} picture in $mode mode..."
+        scope.progress = b.size.toFloat() / total
 
-        picture.show(b)
-        picture.visibility = View.VISIBLE
-        message.visibility = View.GONE
+        if (pictureBytes(b) == total) {
+            state.text = "Receiving a ${b[1]}×${b[2]} picture in $mode mode..."
+            picture.show(b)
+            picture.visibility = View.VISIBLE
+            message.visibility = View.GONE
+        } else {
+            
+            state.text = "Reading in $mode mode..."
+            message.text = b.decodeToString()
+            message.setTextColor(colors.muted)
+            message.visibility = View.VISIBLE
+            picture.visibility = View.GONE
+        }
     }
 
     fun idle() {
         if (!receiving) return
         receiving = false
-        state.text = "That picture got scrambled. Try again?"
+        scope.progress = 0f
+        state.text = "That one got scrambled. Try again?"
     }
 }

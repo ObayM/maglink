@@ -10,8 +10,16 @@ class Scope(context: Context, colors: Palette) : View(context) {
     private var values = DoubleArray(0)
     private val path = Path()
     private val line = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val bar = Paint()
+
+    var progress = 0f
+        set(value) {
+            field = value
+            invalidate()
+        }
 
     init {
+        bar.color = colors.accent
         setBackgroundColor(colors.surface)
         line.color = colors.accent
         line.style = Paint.Style.STROKE
@@ -28,6 +36,13 @@ class Scope(context: Context, colors: Palette) : View(context) {
     }
 
     override fun onDraw(canvas: Canvas) {
+        
+        if (progress > 0f) {
+            val thick = 3 * resources.displayMetrics.density
+            
+            canvas.drawRect(0f, height - thick, width * progress, height.toFloat(), bar)
+        }
+
         if (values.size < 2) return
         val low = values.min()
         val span = maxOf(values.max() - low, 1.0)

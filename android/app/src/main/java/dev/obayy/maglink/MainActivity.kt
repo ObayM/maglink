@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.WindowManager
+import kotlin.math.abs
 
 class MainActivity : Activity(), SensorEventListener {
     private lateinit var sensors: SensorManager
@@ -20,6 +21,10 @@ class MainActivity : Activity(), SensorEventListener {
     private val handler = Handler(Looper.getMainLooper())
     private var count = 0
     private var sensorName = "none"
+
+    private var shown: ByteArray? = null
+    private var moved = true
+    private val gravity = floatArrayOf(0f, 0f, 9.8f)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,6 +47,10 @@ class MainActivity : Activity(), SensorEventListener {
             sensorName = mag.name
             sensors.registerListener(this, mag, 0)
         }
+
+        val accel = sensors.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        if (accel != null) sensors.registerListener(this, accel, SensorManager.SENSOR_DELAY_UI)
+        
         handler.post(tick)
         handler.post(draw)
     }
@@ -54,6 +63,18 @@ class MainActivity : Activity(), SensorEventListener {
     }
 
     override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            var shake = 0f
+
+            for (i in 0 until 3) {
+                shake += abs(event.values[i] - gravity[i])
+                gravity[i] += 0.1f * (event.values[i] - gravity[i])
+            }
+            
+            if (shake > 2f) moved = true
+            return
+        }
+
         readings.add(event.timestamp / 1e9, event.values[0], event.values[1], event.values[2])
         count++
     }
@@ -75,21 +96,35 @@ class MainActivity : Activity(), SensorEventListener {
 
             if (frame == null) {
                 screen.idle()
-                
-            } else if (!frame.complete) {
-                screen.showPartial(frame.bytes)
 
-            } else if (isPicture(frame.bytes)) {
-                screen.showPicture(frame.bytes)
+            } else if (repeat(frame)) {
+                // REPEAT sends the same thing every round, only show it again after the phone was picked up
+
+            } else if (!frame.complete) {
+                screen.showPartial(frame.bytes, frame.total)
 
             } else {
-                val text = frame.bytes.decodeToString()
+                shown = frame.bytes
+                moved = false
 
-                screen.showMessage(commands.run(text) ?: text)
+                if (isPicture(frame.bytes)) {
+                    screen.showPicture(frame.bytes)
+                } else {
+                    val text = frame.bytes.decodeToString()
+                    screen.showMessage(commands.run(text) ?: text)
+                }
             }
 
             handler.postDelayed(this, 1000)
         }
+    }
+
+    private fun repeat(f: Frame): Boolean {
+        val s = shown ?: return false
+        if (moved) return false
+        if (f.complete) return f.bytes.contentEquals(s)
+
+        return f.total == s.size && f.bytes.indices.all { f.bytes[it] == s[it] }
     }
 
     private val draw = object : Runnable {

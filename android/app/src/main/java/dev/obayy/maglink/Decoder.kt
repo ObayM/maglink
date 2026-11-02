@@ -3,7 +3,7 @@ package dev.obayy.maglink
 import kotlin.math.abs
 
 
-class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String)
+class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String, val total: Int)
 
 class Mode(val name: String, val half: Double, val nrzi: Boolean)
 
@@ -26,6 +26,7 @@ object Decoder {
     )
 
     private const val SYNC = "11100010010"
+    private const val MIN_AMP = 4.0
 
     private var t = DoubleArray(0)
     private var prefix = DoubleArray(1)
@@ -155,6 +156,7 @@ object Decoder {
 
         val tried = mutableListOf<Double>()
         var partial: ByteArray? = null
+        var partialTotal = 0
 
         for ((strength, s) in candidates) {
             val dataStart = s + SYNC.length * BIT
@@ -167,12 +169,13 @@ object Decoder {
             val end = dataStart + (length + 2) * BYTE
 
             if (end > last) {
-                val have = ((last - dataStart) / BYTE).toInt() - 1
-                if (partial == null && have >= 3) {
-                    val head = ByteArray(3) { readByte(dataStart, 1 + it).toByte() }
-                    
-                    if (pictureBytes(head) == length) {
-                        partial = ByteArray(minOf(have, length)) { readByte(dataStart, 1 + it).toByte() }
+                val have = minOf(((last - dataStart) / BYTE).toInt() - 1, length)
+                if (partial == null && amp >= MIN_AMP && have >= 2) {
+                    val head = ByteArray(have) { readByte(dataStart, 1 + it).toByte() }
+
+                    if (pictureBytes(head) == length || head.all { it.toInt() in 32..126 }) {
+                        partial = head
+                        partialTotal = length
                     }
                 }
                 continue
@@ -186,12 +189,12 @@ object Decoder {
 
             if (got.all { it >= 0 } && check == 255 - (length + got.sum()) % 256) {
                 doneUntil = end
-                return Frame(ByteArray(length) { got[it].toByte() }, true, mode.name)
+                return Frame(ByteArray(length) { got[it].toByte() }, true, mode.name, length)
             }
-            
+
             if (tried.size == 15) break
         }
-        if (partial != null) return Frame(partial, false, mode.name)
+        if (partial != null) return Frame(partial, false, mode.name, partialTotal)
         return null
     }
 }
