@@ -8,6 +8,11 @@ WARMUP = 4
 SYNC = "11100010010"
 
 MODE = "fast" # slow, normal or fast
+
+REPEAT = False
+GAP = 0.5
+WAKE = 3.0
+
 HALF, NRZI = {"slow": (0.1, False), "normal": (0.05, False), "fast": (0.04, True)}[MODE]
 
 CODES = ["11110", "01001", "10100", "10101", "01010", "01011", "01110", "01111",
@@ -104,20 +109,37 @@ def busy(on):
         os.kill(p.pid, signal.SIGCONT if on else signal.SIGSTOP)
 
 procs = [subprocess.Popen(["yes"], stdout=subprocess.DEVNULL) for _ in range(8)]
-busy(False)
 
 time_0 = time.time()
 
-msg_start = 2.0
+msg_start = WAKE
+round_time = len(halves) * HALF + GAP
 
-for i, want_busy in enumerate(halves):
-    wait_until(msg_start + i * HALF)
-    busy(want_busy)
+if REPEAT:
+    print(f"sending every {round_time:.1f} s, ctrl+c to stop")
 
-wait_until(msg_start + len(halves) * HALF)
+try:
+    r = 0
+    while True:
+        start = msg_start + r * round_time
 
-busy(False)
+        for i, want_busy in enumerate(halves):
+            wait_until(start + i * HALF)
+            busy(want_busy)
 
-for p in procs:
-    p.kill()
-    p.wait()
+        wait_until(start + len(halves) * HALF)
+
+        r += 1
+
+        if not REPEAT:
+            break
+
+        busy(True)
+
+except KeyboardInterrupt:
+    print("stopped")
+
+finally:
+    for p in procs:
+        p.kill()
+        p.wait()

@@ -157,7 +157,6 @@ object Decoder {
         var partial: ByteArray? = null
 
         for ((strength, s) in candidates) {
-            if (tried.any { abs(s - it) < HALF }) continue
             val dataStart = s + SYNC.length * BIT
 
             amp = strength / SYNC.length
@@ -190,7 +189,7 @@ object Decoder {
                 return Frame(ByteArray(length) { got[it].toByte() }, true, mode.name)
             }
             
-            if (tried.size == 5) break
+            if (tried.size == 15) break
         }
         if (partial != null) return Frame(partial, false, mode.name)
         return null
