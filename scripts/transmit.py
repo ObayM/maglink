@@ -2,11 +2,13 @@
 import subprocess, time
 import os, signal
 
-MESSAGE = "hello" # The message we are trying to send our phone :)
+MESSAGE = "hello world" # The message we are trying to send our phone :)
 
 WARMUP = 4
 SYNC = "11100010010"
-HALF = 0.04
+
+MODE = "fast" # slow, normal or fast
+HALF, NRZI = {"slow": (0.1, False), "normal": (0.05, False), "fast": (0.04, True)}[MODE]
 
 CODES = ["11110", "01001", "10100", "10101", "01010", "01011", "01110", "01111",
          "10010", "10011", "10110", "10111", "11010", "11011", "11100", "11101"]
@@ -59,12 +61,11 @@ def picture(art):
     return bytes([1, len(rows[0]), len(rows)]) + pixels
 
 
-payload =  picture(CAT)  #MESSAGE.encode()
+payload =  MESSAGE.encode() #picture(CAT)  
 
 body = bytes([len(payload)]) + payload
 check = 255 - sum(body) % 256 # flipped so a silent stretch (all zeros) can't pass
 
-code = "".join(CODES[b >> 4] + CODES[b & 15] for b in body + bytes([check]))
 
 halves = [True, False] * WARMUP
 
@@ -76,10 +77,23 @@ for bit in SYNC:
 
 level = halves[-1]
 
-for bit in code:
-    if bit == "1":
-        level = not level
-    halves.append(level)
+if NRZI:
+    code = "".join(CODES[b >> 4] + CODES[b & 15] for b in body + bytes([check]))
+    level = halves[-1]
+    
+    for bit in code:
+        if bit == "1":
+            level = not level
+        
+        halves.append(level)
+else:
+    for b in body + bytes([check]):
+       
+        for bit in format(b, "08b"):
+            if bit == "1":
+                halves += [True, False]
+            else:
+                halves += [False, True]
 
 def wait_until(moment):
     while time.time() - time_0 < moment:

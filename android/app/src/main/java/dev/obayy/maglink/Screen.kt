@@ -10,7 +10,7 @@ import android.widget.LinearLayout.LayoutParams
 import android.widget.TextView
 import java.time.LocalTime
 
-const val VERSION = "v10"
+const val VERSION = "v11"
 
 class Screen(private val context: Context) {
     private val colors = paletteFor(context)
@@ -28,6 +28,7 @@ class Screen(private val context: Context) {
     private val earlier = mutableListOf<String>()
     private var last = ""
     private var receiving = false
+    var mode = ""
     private val listening = "Listening to the laptop's magnetic field."
 
 
@@ -101,7 +102,7 @@ class Screen(private val context: Context) {
         }
 
         last = label
-        time.text = "Received at ${LocalTime.now().withNano(0)}"
+        time.text = "Received at ${LocalTime.now().withNano(0)} in $mode mode"
     }
 
     fun showMessage(text: String) {
@@ -125,7 +126,7 @@ class Screen(private val context: Context) {
 
     fun showPartial(b: ByteArray) {
         receiving = true
-        state.text = "Receiving a ${b[1]}×${b[2]} picture..."
+        state.text = "Receiving a ${b[1]}×${b[2]} picture in $mode mode..."
 
         picture.show(b)
         picture.visibility = View.VISIBLE

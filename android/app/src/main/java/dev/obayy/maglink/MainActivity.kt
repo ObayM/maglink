@@ -70,6 +70,7 @@ class MainActivity : Activity(), SensorEventListener {
             Share.latest = snap
             
             val frame = Decoder.listen(snap)
+            if (frame != null) screen.mode = frame.mode
 
             if (frame == null) {
                 screen.idle()

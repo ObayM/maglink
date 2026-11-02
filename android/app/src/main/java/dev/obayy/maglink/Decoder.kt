@@ -2,25 +2,52 @@ package dev.obayy.maglink
 
 import kotlin.math.abs
 
-class Frame(val bytes: ByteArray, val complete: Boolean)
+
+class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String)
+
+class Mode(val name: String, val half: Double, val nrzi: Boolean)
 
 object Decoder {
-    private const val HALF = 0.04
-    private const val BYTE = 10 * HALF
+    private val MODES = listOf(
+            Mode("fast", 0.04, true),
+            Mode("normal", 0.05, false),
+            Mode("slow", 0.1, false),
+        )
+
+    private var mode = MODES[0]
+    private var HALF = 0.04
+    private var SKIP = 0.02
+    private var BIT = 0.08
+    private var BYTE = 0.4
 
     private val CODES = intArrayOf(
         0b11110, 0b01001, 0b10100, 0b10101, 0b01010, 0b01011, 0b01110, 0b01111,
         0b10010, 0b10011, 0b10110, 0b10111, 0b11010, 0b11011, 0b11100, 0b11101,
     )
 
-    private const val SKIP = HALF / 2
-    private const val BIT = 2 * HALF
     private const val SYNC = "11100010010"
 
     private var t = DoubleArray(0)
     private var prefix = DoubleArray(1)
     private var doneUntil = 0.0
     private var amp = 0.0
+
+    private fun use(m: Mode) {
+        mode = m
+        HALF = m.half
+        SKIP = HALF / 2
+        BIT = 2 * HALF
+        BYTE = if (m.nrzi) 10 * HALF else 16 * HALF
+    }
+
+    private fun readManchester(dataStart: Double, k: Int): Int {
+        var value = 0
+        for (i in 0 until 8) {
+            value *= 2
+            if (margin(dataStart + (8 * k + i) * BIT) > 0) value += 1
+        }
+        return value
+    }
 
     private fun firstAt(time: Double): Int {
         var low = 0
@@ -77,6 +104,8 @@ object Decoder {
     }
 
     private fun readByte(dataStart: Double, k: Int): Int {
+        if (!mode.nrzi) return readManchester(dataStart, k)
+
         val high = readNibble(dataStart, 2 * k)
         val low = readNibble(dataStart, 2 * k + 1)
         if (high < 0 || low < 0) return -1
@@ -99,6 +128,19 @@ object Decoder {
 
         val last = t.last()
 
+        var partial: Frame? = null
+        for (m in MODES) {
+            use(m)
+
+            val frame = search(last) ?: continue
+            if (frame.complete) return frame
+
+            if (partial == null) partial = frame
+        }
+        return partial
+    }
+
+    private fun search(last: Double): Frame? {
         val candidates = mutableListOf<Pair<Double, Double>>()
         var start = maxOf(t.first(), doneUntil)
 
@@ -145,12 +187,12 @@ object Decoder {
 
             if (got.all { it >= 0 } && check == 255 - (length + got.sum()) % 256) {
                 doneUntil = end
-                return Frame(ByteArray(length) { got[it].toByte() }, true)
+                return Frame(ByteArray(length) { got[it].toByte() }, true, mode.name)
             }
             
             if (tried.size == 5) break
         }
-        if (partial != null) return Frame(partial, false)
+        if (partial != null) return Frame(partial, false, mode.name)
         return null
     }
 }
