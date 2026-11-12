@@ -4,10 +4,10 @@ class Doing(val label: String, val finished: Boolean)
 
 object Laptop {
     private const val WINDOW = 5.0
-    private const val HEAVY = 15.0
-    private const val GAP = 5.0
+    private const val HEAVY = 9.0
+    private const val GAP = 3.0
     private const val LONG = 20.0
-    private const val CREEP = 0.5 / 120
+    private const val CREEP = 0.3 / 120
 
     private var quietest = Double.MAX_VALUE
     private var busySince = 0.0

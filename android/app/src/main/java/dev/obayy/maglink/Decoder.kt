@@ -1,6 +1,7 @@
 package dev.obayy.maglink
 
 import kotlin.math.abs
+import kotlin.math.sqrt
 
 
 class Frame(val bytes: ByteArray, val complete: Boolean, val mode: String, val total: Int, val progress: Float = 1f, val amp: Double = 0.0)
@@ -41,13 +42,20 @@ object Decoder {
     )
 
     private const val SYNC = "11100010010"
-    private const val MIN_AMP = 4.0
+    private const val MIN_AMP = 2.3
     private const val WEAK = 8
+    private const val SURE = 0.25
 
     private var t = DoubleArray(0)
-    private var prefix = DoubleArray(1)
+    private var sums = Array(3) { DoubleArray(1) }
     private var doneUntil = 0.0
     private var amp = 0.0
+
+    // every phone has its compass chip turned a different way, so each sync works out its own mix of x, y and z
+    private var dir = DoubleArray(3)
+
+    // the mix from the last message that came through (starts as x + y - z, which was right for the A16)
+    var learned = doubleArrayOf(1 / sqrt(3.0), 1 / sqrt(3.0), -1 / sqrt(3.0))
 
     private fun use(m: Mode) {
         mode = m
@@ -77,7 +85,21 @@ object Decoder {
     private fun avg(a: Double, b: Double): Double {
         val i = firstAt(a)
         val j = firstAt(b)
-        return (prefix[j] - prefix[i]) / maxOf(j - i, 1)
+        var sum = 0.0
+        for (k in 0 until 3) sum += dir[k] * (sums[k][j] - sums[k][i])
+        return sum / maxOf(j - i, 1)
+    }
+
+    private fun margins(start: Double): DoubleArray {
+        val a = firstAt(start + SKIP)
+        val b = firstAt(start + HALF)
+        val c = firstAt(start + HALF + SKIP)
+        val d = firstAt(start + BIT)
+
+        return DoubleArray(3) { k ->
+            val s = sums[k]
+            (s[b] - s[a]) / maxOf(b - a, 1) - (s[d] - s[c]) / maxOf(d - c, 1)
+        }
     }
 
     private fun margin(start: Double): Double {
@@ -86,18 +108,25 @@ object Decoder {
 
     // python is 100% better than kotlin :sob:
 
-    private fun syncScore(margins: DoubleArray, i: Int, apart: Int): Pair<Int, Double> {
-        var agree = 0
-        var strength = 0.0
+    private fun sign(k: Int) = if (SYNC[k] == '1') 1.0 else -1.0
+
+    // the best mix is wherever the 11 sync bits point together. Picking it lets noise pass as a sync more easily, so every bit has to clearly agree
+    private fun syncAt(margins: Array<DoubleArray>, i: Int, apart: Int): Pair<Double, DoubleArray>? {
+        val w = DoubleArray(3)
+        for (k in SYNC.indices) {
+            val m = margins[i + k * apart]
+            for (a in 0 until 3) w[a] += sign(k) * m[a]
+        }
+
+        val strength = sqrt(w[0] * w[0] + w[1] * w[1] + w[2] * w[2])
+        if (strength == 0.0) return null
+        for (a in 0 until 3) w[a] /= strength
 
         for (k in SYNC.indices) {
-            var m = margins[i + k * apart]
-            if (SYNC[k] == '0') m = -m
-            
-            strength += m
-            if (m > 0) agree++
+            val m = margins[i + k * apart]
+            if (sign(k) * (w[0] * m[0] + w[1] * m[1] + w[2] * m[2]) < SURE * strength / SYNC.length) return null
         }
-        return Pair(agree, strength)
+        return Pair(strength, w)
     }
 
     private fun level(start: Double) = avg(start + SKIP, start + HALF)
@@ -172,7 +201,7 @@ object Decoder {
         return null
     }
 
-    fun mix(r: Snapshot, i: Int) = r.x[i] + r.y[i] - r.z[i]
+    fun mix(r: Snapshot, i: Int) = learned[0] * r.x[i] + learned[1] * r.y[i] + learned[2] * r.z[i]
 
     fun listen(r: Snapshot): Frame? {
         if (r.t.size < 100){
@@ -180,10 +209,11 @@ object Decoder {
         }
         t = r.t 
 
-        prefix = DoubleArray(t.size + 1)
+        sums = Array(3) { DoubleArray(t.size + 1) }
+        val axes = arrayOf(r.x, r.y, r.z)
 
-        for (i in t.indices) {
-            prefix[i + 1] = prefix[i] + mix(r, i)
+        for (k in 0 until 3) {
+            for (i in t.indices) sums[k][i + 1] = sums[k][i] + axes[k][i]
         }
 
         val last = t.last()
@@ -201,19 +231,18 @@ object Decoder {
     }
 
     private fun search(last: Double): Frame? {
-        val candidates = mutableListOf<Pair<Double, Double>>()
+        val candidates = mutableListOf<Triple<Double, Double, DoubleArray>>()
         val first = maxOf(t.first(), doneUntil)
         val n = ((last - SYNC.length * BIT - first) / STEP).toInt()
         if (n <= 0) return null
 
         // BIT is a whole number of STEPs, so each margin only has to be worked out once
         val apart = Math.round(BIT / STEP).toInt()
-        val margins = DoubleArray(n + SYNC.length * apart) { margin(first + it * STEP) }
+        val margins = Array(n + SYNC.length * apart) { margins(first + it * STEP) }
 
         for (i in 0 until n) {
-            val (agree, strength) = syncScore(margins, i, apart)
-
-            if (agree == SYNC.length) candidates.add(Pair(strength, first + i * STEP))
+            val (strength, w) = syncAt(margins, i, apart) ?: continue
+            candidates.add(Triple(strength, first + i * STEP, w))
         }
 
         candidates.sortByDescending { it.first }
@@ -221,9 +250,10 @@ object Decoder {
         val tried = mutableListOf<Double>()
         var partial: Frame? = null
 
-        for ((strength, s) in candidates) {
+        for ((strength, s, w) in candidates) {
             val dataStart = s + SYNC.length * BIT
 
+            dir = w
             amp = strength / SYNC.length
             
             val length = readByte(dataStart, 0)
@@ -254,7 +284,8 @@ object Decoder {
 
             if (body != null) {
                 doneUntil = end
-                
+                learned = w
+
                 return Frame(body, true, mode.name, length)
             }
 

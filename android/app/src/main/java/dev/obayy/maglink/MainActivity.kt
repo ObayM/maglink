@@ -28,6 +28,7 @@ class MainActivity : Activity(), SensorEventListener {
     private var shown: ByteArray? = null
     private var moved = true
     private val gravity = floatArrayOf(0f, 0f, 9.8f)
+    private val prefs by lazy { getSharedPreferences("maglink", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,6 +39,10 @@ class MainActivity : Activity(), SensorEventListener {
         setContentView(screen.root)
         sensors = getSystemService(SENSOR_SERVICE) as SensorManager
 
+        prefs.getString("mix", null)?.let { saved ->
+            Decoder.learned = saved.split(",").map { it.toDouble() }.toDoubleArray()
+        }
+
         Share.start()
     }
 
@@ -45,7 +50,9 @@ class MainActivity : Activity(), SensorEventListener {
         super.onResume()
 
 
-        val mag = sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
+        // some phones smooth the calibrated reading, which blurs the fast bits together
+        val mag = sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD_UNCALIBRATED)
+            ?: sensors.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD)
         if (mag != null) {
             sensorName = mag.name
             sensors.registerListener(this, mag, 0)
@@ -100,6 +107,11 @@ class MainActivity : Activity(), SensorEventListener {
 
             val frame = Decoder.listen(snap)
             if (frame != null) screen.mode = frame.mode
+
+            if (frame?.complete == true) {
+                prefs.edit().putString("mix", Decoder.learned.joinToString(",")).apply()
+                Laptop.reset()
+            }
 
             if (frame != null || step != null) {
                 screen.showDoing(null)

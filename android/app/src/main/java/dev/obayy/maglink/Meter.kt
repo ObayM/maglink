@@ -8,16 +8,21 @@ import kotlin.math.sqrt
 object Meter {
     private const val WINDOW = 4.0
 
-    private fun strength(t: DoubleArray, v: DoubleArray, hz: Double): Double {
-        var c = 0.0
-        var s = 0.0
-        for (i in t.indices) {
-            val a = 2 * PI * hz * t[i]
-            c += v[i] * cos(a)
-            s += v[i] * sin(a)
+    // all three axes together, so it works before we know which way this phone's sensor is turned
+    private fun strength(t: DoubleArray, axes: List<DoubleArray>, hz: Double): Double {
+        var total = 0.0
+        for (v in axes) {
+            var c = 0.0
+            var s = 0.0
+            for (i in t.indices) {
+                val a = 2 * PI * hz * t[i]
+                c += v[i] * cos(a)
+                s += v[i] * sin(a)
+            }
+            total += c * c + s * s
         }
 
-        return PI * sqrt(c * c + s * s) / t.size
+        return PI * sqrt(total) / t.size
     }
 
     fun measure(r: Snapshot): Double? {
@@ -35,20 +40,22 @@ object Meter {
         val n = to - from
 
         val t = DoubleArray(n) { r.t[from + it] - r.t[from] }
-        val v = DoubleArray(n) { Decoder.mix(r, from + it) }
-
         val tm = t.average()
-        val vm = v.average()
 
-        var up = 0.0
         var across = 0.0
+        for (i in 0 until n) across += (t[i] - tm) * (t[i] - tm)
 
-        for (i in 0 until n) {
-            up += (t[i] - tm) * (v[i] - vm)
-            across += (t[i] - tm) * (t[i] - tm)
+        val v = listOf(r.x, r.y, r.z).map { axis ->
+            val a = DoubleArray(n) { axis[from + it] }
+            val am = a.average()
+
+            var up = 0.0
+            for (i in 0 until n) up += (t[i] - tm) * (a[i] - am)
+
+            val slope = up / across
+            for (i in 0 until n) a[i] -= am + slope * (t[i] - tm)
+            a
         }
-        val slope = up / across
-        for (i in 0 until n) v[i] -= vm + slope * (t[i] - tm)
 
         val step = strength(t, v, 1.0)
         val noise = (strength(t, v, 0.75) + strength(t, v, 1.25)) / 2
@@ -58,8 +65,8 @@ object Meter {
     }
 
     fun advice(step: Double) = when {
-        step >= 26 -> "fast should work :)"
-        step >= 14 -> "use normal"
+        step >= 15 -> "fast should work :)"
+        step >= 8 -> "use normal"
         else -> "too weak, move the phone"
     }
 }

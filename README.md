@@ -40,11 +40,9 @@ cd android
 ./gradlew assembleDebug
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
-2. Find a good spot: run `python3 scripts/beacon.py` and slide the phone around the laptop. When the app shows "Signal ... µT", that's the strength there. 26+ means fast should work, 14+ means use normal, lower means keep looking.
+2. Find a good spot: run `python3 scripts/beacon.py` and slide the phone around the laptop. When the app shows "Signal ... µT", that's the strength there. 15+ means fast should work, 8+ means use normal, lower means keep looking.
 
-3. Fix the axis mix, `Decoder.mix()` combines the three axes as `x + y - z` which is right for me but it could be different for you :(
-
-4. Set `MESSAGE` and `MODE` in `scripts/transmit.py` and run `python3 scripts/transmit.py`. For a picture, use `payload = picture(CAT)` instead of the message.
+3. Set `MESSAGE` and `MODE` in `scripts/transmit.py` and run `python3 scripts/transmit.py`. For a picture, use `payload = picture(CAT)` instead of the message.
 
 The app also serves its raw readings on your local network, which makes debugging much easier:
 
