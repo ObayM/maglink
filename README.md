@@ -2,6 +2,10 @@
 
 Sending text (information) from my laptop to my phone through the magnetic field of the CPU's power circuitry, without any Wi-Fi, Bluetooth, sound, or a cable.
 
+
+https://github.com/user-attachments/assets/318336ba-6685-4490-99c6-a5bc1f37b4df
+
+
 ## How it works
 
 Basically the way this works is when the CPU jumps from idle to 100% (or near to it), its power draw goes from about 6W to 23W and the current rushing through the voltage regulator makes a tiny magnetic field.
